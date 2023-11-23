@@ -23,7 +23,9 @@ async function run() {
     // await client.connect();
     const menuCollection = client.db("munchDB").collection("menu");
     const reviewCollection = client.db("munchDB").collection("reviews");
+    const cartCollection = client.db("munchDB").collection("carts");
 
+    //------gets------
     app.get('/menu', async(req, res) => {
         const result = await menuCollection.find().toArray();
         res.send(result);
@@ -32,8 +34,21 @@ async function run() {
       const result = await reviewCollection.find().toArray();
       res.send(result);
     })
+    app.get('/carts', async(req, res) => {
+      const result = await cartCollection.find().toArray();
+      res.send(result);
+    })
 
-    // await client.db("admin").command({ ping: 1 });
+
+    //------posts------
+    app.post('/carts', async(req, res)=>{
+      const cartItem = req.body;
+      const result = await cartCollection.insertOne(cartItem);
+      res.send(result);
+    })
+
+    
+
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
   }
