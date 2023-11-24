@@ -22,6 +22,7 @@ async function run() {
   try {
     // await client.connect();
     const menuCollection = client.db("munchDB").collection("menu");
+    const userCollection = client.db("munchDB").collection("users");
     const reviewCollection = client.db("munchDB").collection("reviews");
     const cartCollection = client.db("munchDB").collection("carts");
 
@@ -42,21 +43,37 @@ async function run() {
     })
 
 
+
     //------POSTSSS------
     app.post('/carts', async(req, res)=>{
       const cartItem = req.body;
       const result = await cartCollection.insertOne(cartItem);
       res.send(result);
     })
+    app.post('/users', async(req, res) => {
+      const user = req.body;
+
+        //check if email already exists
+        const query = { email: user.email}
+        const existingUser = await userCollection.findOne(query);
+        if(existingUser){
+          return res.send({message: 'User Already Exists', insertedId: null});
+        }
+
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    })
+
 
     
     //------DELETESS------
-    app.delete('/cart/:id', async(req, res) => {
+    app.delete('/carts/:id', async(req, res) => {
       const id = req.params.id;
       const query = {_id: new ObjectId(id)};
       const result = await cartCollection.deleteOne(query);
       res.send(result);
     })
+
 
 
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
