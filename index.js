@@ -9,7 +9,7 @@ app.use(express.json());
 
 
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ogz7mxs.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, {
   serverApi: {
@@ -25,7 +25,7 @@ async function run() {
     const reviewCollection = client.db("munchDB").collection("reviews");
     const cartCollection = client.db("munchDB").collection("carts");
 
-    //------gets------
+    //------GETSSSS------
     app.get('/menu', async(req, res) => {
         const result = await menuCollection.find().toArray();
         res.send(result);
@@ -35,12 +35,14 @@ async function run() {
       res.send(result);
     })
     app.get('/carts', async(req, res) => {
-      const result = await cartCollection.find().toArray();
+      const email = req.query.email;
+      const query = {email: email};
+      const result = await cartCollection.find(query).toArray();
       res.send(result);
     })
 
 
-    //------posts------
+    //------POSTSSS------
     app.post('/carts', async(req, res)=>{
       const cartItem = req.body;
       const result = await cartCollection.insertOne(cartItem);
@@ -48,6 +50,14 @@ async function run() {
     })
 
     
+    //------DELETESS------
+    app.delete('/cart/:id', async(req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await cartCollection.deleteOne(query);
+      res.send(result);
+    })
+
 
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
