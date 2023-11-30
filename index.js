@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 const cors = require('cors');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 var jwt = require('jsonwebtoken');
 // require('crypto').randomBytes(64).toString('hex')
 require('dotenv').config()
@@ -12,7 +13,7 @@ app.use(express.json());
 
 
 
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ogz7mxs.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, {
   serverApi: {
@@ -23,7 +24,7 @@ const client = new MongoClient(uri, {
 });
 async function run() {
   try {
-    // await client.connect();
+    await client.connect();
     const menuCollection = client.db("munchDB").collection("menu");
     const userCollection = client.db("munchDB").collection("users");
     const reviewCollection = client.db("munchDB").collection("reviews");
@@ -43,7 +44,7 @@ async function run() {
 
     //-----------------MIDDLEWARES---------------
     const verifyToken = (req, res, next) => {
-      console.log('Inside VerifyToken Middleware: ', req.headers.authorization);
+      // console.log('Inside VerifyToken Middleware: ', req.headers.authorization);
       if (!req.headers.authorization) { //in client side, inside axios headers we named the token field as authorization
         return res.status(401).send({ message: 'forbidden access' });
       }
@@ -57,13 +58,13 @@ async function run() {
       })
     }
 
-    const verifyAdmin = async (req, res, next) =>{
+    const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
-      const query = {email: email};
+      const query = { email: email };
       const user = await userCollection.findOne(query);
       const isAdmin = user?.role === 'admin';
-      if(!isAdmin){
-        return res.status(403).send({message: 'forbidden access'});
+      if (!isAdmin) {
+        return res.status(403).send({ message: 'forbidden access' });
       }
       next();
     }
@@ -73,19 +74,25 @@ async function run() {
     //------GETSSSS------
     app.get('/users/admin/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
-      if(email !== req.decoded.email){
+      if (email !== req.decoded.email) {
         return res.status(403).send({ message: 'unauthorized access' });
       }
-      const query = { email: email};
+      const query = { email: email };
       const user = await userCollection.findOne(query);
       let admin = false;
       admin = user?.role === 'admin';
-      res.send({admin});
+      res.send({ admin });
     })
     app.get('/menu', async (req, res) => {
       const result = await menuCollection.find().toArray();
       res.send(result);
     })
+    app.get('/menu/:id', async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: id };
+        const result = await menuCollection.findOne(query);
+        res.send(result);
+    });
     app.get('/reviews', async (req, res) => {
       const result = await reviewCollection.find().toArray();
       res.send(result);
@@ -151,6 +158,7 @@ async function run() {
     //------DELETESS------
     app.delete('/carts/:id', async (req, res) => {
       const id = req.params.id;
+      console.log("cart id: ", id);
       const query = { _id: new ObjectId(id) };
       const result = await cartCollection.deleteOne(query);
       res.send(result);
@@ -159,6 +167,13 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
+      res.send(result);
+    })
+    app.delete('/menu/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: id };
+      const result = await menuCollection.deleteOne(query);
+      console.log('result: ', result);
       res.send(result);
     })
 
