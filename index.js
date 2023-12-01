@@ -3,6 +3,7 @@ const app = express();
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 var jwt = require('jsonwebtoken');
+const stripe = require('stripe')('sk_test_51OIDyHDbmhpZKeGXQPdNpb4JK3JKaaGbkUc3cOYarv574zh2HWuNDmLbuLrqkxF7Zy4L5PalydNKHZ5dKrr9Nqfe00DXGXQqug')
 // require('crypto').randomBytes(64).toString('hex')
 require('dotenv').config()
 const port = process.env.PORT || 5000;
@@ -24,11 +25,12 @@ const client = new MongoClient(uri, {
 });
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
     const menuCollection = client.db("munchDB").collection("menu");
     const userCollection = client.db("munchDB").collection("users");
     const reviewCollection = client.db("munchDB").collection("reviews");
     const cartCollection = client.db("munchDB").collection("carts");
+    const paymentCollection = client.db("munchDB").collection("payments");
 
 
     //-------------JWT RELATED API-----------
@@ -44,7 +46,6 @@ async function run() {
 
     //-----------------MIDDLEWARES---------------
     const verifyToken = (req, res, next) => {
-      // console.log('Inside VerifyToken Middleware: ', req.headers.authorization);
       if (!req.headers.authorization) { //in client side, inside axios headers we named the token field as authorization
         return res.status(401).send({ message: 'forbidden access' });
       }
@@ -135,6 +136,36 @@ async function run() {
       const menuItem = req.body;
       const result = await menuCollection.insertOne(menuItem);
       res.send(result);
+    })
+
+    //////---------------PAYMENT INTENT-----------------////////
+    app.post('/create-payment-intent', async(req, res)=> {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      console.log('amount : ', amount);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+    app.post('/payments', async (req, res) => {
+      const payment = req.body;
+      const paymentResult = await paymentCollection.insertOne(payment);
+      
+      //carefully delete each Item from the cart
+      const query = {
+        _id:{
+          $in: payment.cartIds.map(id => new  ObjectId(id))
+        }
+      };
+      const deleteResult = await cartCollection.deleteMany(query);
+
+
+      res.send({paymentResult, deleteResult});
     })
 
 
